@@ -5,8 +5,8 @@ const shell = require("shelljs");
 const moment = require("moment");
 
 const config = {
-  path: "/Users/backer/Work/docker-unpack-monitor/tmp-test",
-  // path: "/watch",
+  // path: "/Users/backer/Work/docker-unpack-monitor/tmp-test",
+  path: "/watch",
   ext: [".rar"],
   delayUnpackSeconds: 5
 };
