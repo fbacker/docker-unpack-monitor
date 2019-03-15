@@ -5,8 +5,8 @@ const shell = require("shelljs");
 const moment = require("moment");
 
 const config = {
-  // path: "/Users/backer/Work/docker-unpack-monitor/tmp-test",
-  path: "/watch",
+  path: "/Users/backer/Work/docker-unpack-monitor/tmp-test",
+  // path: "/watch",
   ext: [".rar"],
   delayUnpackSeconds: 5
 };
@@ -66,7 +66,7 @@ watch(config.path, { recursive: true }, (evt, file) => {
   console.log("file changed", file, evt);
   watchFolderCheckValid(file, evt)
     .then(fileValidated => {
-      que.push({ file: fileValidated, time: moment() });
+      que.push({ file: fileValidated, time: moment(), retry: 0 });
     })
     .catch(e => {
       // do nothing
@@ -79,7 +79,7 @@ const checkFolder = path => {
     files.forEach(file => {
       watchFolderCheckValid(file, "existing")
         .then(fileValidated => {
-          que.push({ file: fileValidated, time: moment() });
+          que.push({ file: fileValidated, time: moment(), retry: 0 });
         })
         .catch(e => {
           // do nothing
@@ -100,32 +100,51 @@ setInterval(() => {
     isRunning = true;
     que.shift();
     const fileObj = path.parse(item.file);
-    console.log("want to unpack ", { item, duration });
+    console.log("Want to unpack ", item.file);
 
-    fs.readdir(fileObj.dir, (err1, files) => {
-      let numOfFiles1 = files.length;
-      let command = `unrar x -o- "${item.file}" "${fileObj.dir}"`;
-      shell.exec(command, function(code, stdout, stderr) {
-        console.log("unpacked"); //, { code, stdout, stderr });
-        fs.readdir(fileObj.dir, (err1, files2) => {
-          let numOfFiles2 = files2.length;
-          const didUnpack = numOfFiles1 !== numOfFiles2;
-          console.log("numOfFiles2", { numOfFiles1, numOfFiles2, didUnpack });
-          if (didUnpack) {
-            const fileTmpCreate = path.join(fileObj.dir, `.${fileObj.name}`);
-            console.log("unpack this");
-            fs.open(fileTmpCreate, "w", (err, fd) => {
-              if (err) throw err;
-              fs.close(fd, err => {
-                if (err) throw err;
-                isRunning = false;
-              });
-            });
-          } else {
+    let command = `unrar x -o- "${item.file}" "${fileObj.dir}"`;
+    shell.exec(command, function(code, stdout, stderr) {
+      // console.log(stdout);
+      const NoFilesToExtract = stdout.match(/no files to extract/gim); // already unpacked
+      const CompletedExtract = stdout.match(/all ok/gim); // successfull unpacked
+
+      // console.log("did match", { NoFilesToExtract, CompletedExtract });
+
+      let didUnpack = false;
+      if (NoFilesToExtract && NoFilesToExtract.length > 0) {
+        didUnpack = true;
+        console.log("Was already unpacked");
+      } else if (CompletedExtract && CompletedExtract.length > 0) {
+        didUnpack = true;
+        console.log("Unpacked and ready");
+      } else {
+        if (item.retry > 3) {
+          console.error("We couldn't unpack, lets stop trying");
+        } else {
+          console.error(
+            "We couldn't unpack, add to list with delay, retry count",
+            item.retry
+          );
+          que.push({
+            file: item.file,
+            time: moment().add(2, "minutes"),
+            retry: item.retry + 1
+          });
+        }
+      }
+
+      if (didUnpack) {
+        const fileTmpCreate = path.join(fileObj.dir, `.${fileObj.name}`);
+        fs.open(fileTmpCreate, "w", (err, fd) => {
+          if (err) throw err;
+          fs.close(fd, err => {
+            if (err) throw err;
             isRunning = false;
-          }
+          });
         });
-      });
+      } else {
+        isRunning = false;
+      }
     });
   }
 }, 1000);

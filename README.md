@@ -8,6 +8,8 @@ It will also trigger a full recursive scan to unpack all files at startup.
 
 Note: If issue with permissions, make sure to set PGID/UID.
 
+If a failed unpack occurs, e.g. not all rxx files are in place. It will retry to unpack later, but a maximum of 3 retries.
+
 ### Retrigger an unpack
 
 When unpacked it will place a "hidden" file. This to check
@@ -15,6 +17,7 @@ if a file is already unpacked and should be ignored.
 
 To restart an unpack, make sure the "dot" file is removed and e.g. rename folder or restart docker container
 
+"dot" file.
 myfile.rar, when unpacked a .myfile will be placed in same folder.
 
 ## Usage
