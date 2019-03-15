@@ -26,9 +26,11 @@ myfile.rar, when unpacked a .myfile will be placed in same folder.
 
 ## Usage compose
 
+```
 unpack:
-image: fredrickbacker/unpack-monitor:latest
-container_name: unpack
-volumes: - /path-to-monitor-folder:/watch
-restart: always
-environment: - PGID=1000 - PUID=1000
+  image: fredrickbacker/unpack-monitor:latest
+  container_name: unpack
+  volumes: - /path-to-monitor-folder:/watch
+  restart: always
+  environment: - PGID=1000 - PUID=1000
+```
