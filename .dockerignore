@@ -1,0 +1,5 @@
+node_modules
+tmp-test
+.DS_Store
+readme-docker.md
+.vscode

@@ -1,12 +1,13 @@
-FROM alpine:3.7
+FROM node:8-alpine
 
 RUN apk --update add \
-  inotify-tools \
-  unrar \
-  bash
+  unrar 
 
 # where to check
 VOLUME [ "/watch" ]
 
-COPY ./monitor.sh /app/
-ENTRYPOINT [ "/app/monitor.sh" ]
+ADD . /app
+WORKDIR /app
+
+RUN npm install --only=production
+CMD [ "npm", "start" ]

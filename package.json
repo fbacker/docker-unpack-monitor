@@ -1,0 +1,25 @@
+{
+  "name": "docker-unpack-monitor",
+  "version": "1.0.0",
+  "description": "docker-unpack-monitor =====================",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fbacker/docker-unpack-monitor.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fbacker/docker-unpack-monitor/issues"
+  },
+  "homepage": "https://github.com/fbacker/docker-unpack-monitor#readme",
+  "dependencies": {
+    "moment": "^2.24.0",
+    "node-watch": "^0.6.0",
+    "shelljs": "^0.8.3"
+  }
+}
