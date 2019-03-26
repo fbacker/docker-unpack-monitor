@@ -4,15 +4,30 @@ const watch = require("node-watch");
 const shell = require("shelljs");
 const moment = require("moment");
 
+const startupPath =
+  process.env.ENVIRONMENT === "production"
+    ? "/watch"
+    : "/Users/backer/Work/docker-unpack-monitor/tmp-test";
 const config = {
-  // path: "/Users/backer/Work/docker-unpack-monitor/tmp-test",
-  path: "/watch",
+  path: startupPath,
   ext: [".rar"],
   delayUnpackSeconds: 5
 };
 let que = [];
 let isRunning = false;
 
+const shortname = file => {
+  const fileObj = path.parse(file);
+  const fileOutputDir =
+    "../.." + fileObj.dir.substr(fileObj.dir.lastIndexOf("/"));
+  const out = path.join(fileOutputDir, fileObj.base);
+  return out;
+};
+/**
+ *
+ * @param {string} dir Path to recursivly look at
+ * @param {Function} done Callback when done
+ */
 const walk = function(dir, done) {
   var results = [];
   fs.readdir(dir, function(err, list) {
@@ -37,60 +52,91 @@ const walk = function(dir, done) {
   });
 };
 
-const watchFolderCheckValid = (name, event) =>
+/**
+ *
+ * @param {string} file path to file that will be checked
+ * @param {string} event watch event that triggered
+ */
+const watchFolderCheckValid = (file, event) =>
   new Promise((resolve, reject) => {
-    if (event === "remove") return reject("File removed, ignore");
+    if (event === "remove") {
+      //console.log(`File removed '${file}'`);
+      return reject();
+    }
 
     // maybe its a folder
-    if (fs.lstatSync(name).isDirectory()) {
-      checkFolder(name);
-      // "We cant check folders, ignore for now, but deep scan it"
-      return reject(null);
+    if (fs.lstatSync(file).isDirectory()) {
+      // We cant check folders, but deep scan it
+      console.log(`Is a folder, send to deep scan '${shortname(file)}'`);
+      checkFolder(file);
+      return reject();
     } else {
       // check the file
-      const fileObj = path.parse(name);
-      if (config.ext.includes(fileObj.ext)) {
+      const fileObj = path.parse(file);
+      if (config.ext.includes(fileObj.ext.toLowerCase())) {
         const unpackedFileCheck = path.join(fileObj.dir, `.${fileObj.name}`);
         if (fs.existsSync(unpackedFileCheck)) {
           //file exists
-          return reject("Already unpacked file " + name);
+          console.log(
+            `Already unpacked file '${shortname(file)}' remove '.${
+              fileObj.name
+            }' to unpack again.`
+          );
+          return reject();
         } else {
-          return resolve(name);
+          return resolve(file);
         }
       }
     }
-    // "Not interested in file format, ignore"
-    return reject(null);
+    // Not interested in file format
+    return reject();
   });
 
+/**
+ *
+ * @param {string} file file to unpack
+ */
+const addFileToQue = file => {
+  // do not put duplicates in que
+  for (let i = 0; i < que.length; i++) {
+    if (que[i].file === file) {
+      //console.log(`Path is already in que '${file}'`)
+      return;
+    }
+  }
+  console.log(`Add unpack file to que ${file}`);
+  que.push({ file, time: moment(), retry: 0 });
+};
+/**
+ * watch for file changes on disk
+ */
 watch(config.path, { recursive: true }, (evt, file) => {
   watchFolderCheckValid(file, evt)
     .then(fileValidated => {
-      que.push({ file: fileValidated, time: moment(), retry: 0 });
+      addFileToQue(fileValidated);
     })
-    .catch(e => {
-      // do nothing
-      if (e) console.error(e);
-    });
+    .catch(() => {});
 });
 
-const checkFolder = path => {
-  walk(path, (err, files) => {
+/**
+ *
+ * @param {string} file check all files in folder
+ */
+const checkFolder = file => {
+  walk(file, (err, files) => {
     files.forEach(file => {
       watchFolderCheckValid(file, "existing")
         .then(fileValidated => {
-          console.log("Found file to unpack, add to que", fileValidated);
-          que.push({ file: fileValidated, time: moment(), retry: 0 });
+          addFileToQue(fileValidated);
         })
-        .catch(e => {
-          // do nothing
-          if (e) console.error(e);
-        });
+        .catch(() => {});
     });
   });
 };
-checkFolder(config.path);
 
+/**
+ * Application loop
+ */
 setInterval(() => {
   if (isRunning) return;
   if (que.length === 0) return;
@@ -101,10 +147,10 @@ setInterval(() => {
     isRunning = true;
     que.shift();
     const fileObj = path.parse(item.file);
-    console.log("Que: Want to unpack ", item.file);
+    console.log(`Que: Trying to unpack ${shortname(item.file)}`);
 
     let command = `unrar x -o- "${item.file}" "${fileObj.dir}"`;
-    shell.exec(command, function(code, stdout, stderr) {
+    shell.exec(command, { silent: true }, function(code, stdout, stderr) {
       // console.log(stdout);
       const NoFilesToExtract = stdout.match(/no files to extract/gim); // already unpacked
       const CompletedExtract = stdout.match(/all ok/gim); // successfull unpacked
@@ -114,17 +160,22 @@ setInterval(() => {
       let didUnpack = false;
       if (NoFilesToExtract && NoFilesToExtract.length > 0) {
         didUnpack = true;
-        console.log("Was already unpacked");
+        console.log(`Que: Was already unpacked '${shortname(item.file)}'`);
       } else if (CompletedExtract && CompletedExtract.length > 0) {
         didUnpack = true;
-        console.log("Unpacked and ready to be used");
+        console.log(
+          `Que: Unpacked and ready to be used '${shortname(item.file)}'`
+        );
       } else {
         if (item.retry > 3) {
-          console.error("We couldn't unpack, lets stop trying");
+          console.error(
+            `We couldn't unpack, lets stop trying '${shortname(item.file)}'`
+          );
         } else {
           console.error(
-            "We couldn't unpack, add to list with delay of 10min, retry count",
-            item.retry
+            `We couldn't unpack, add to list with delay of 10min, retry count ${
+              item.retry
+            } on file '${shortname(item.file)}'`
           );
           que.push({
             file: item.file,
@@ -149,3 +200,6 @@ setInterval(() => {
     });
   }
 }, 1000);
+
+// Start to check all files
+checkFolder(config.path);
