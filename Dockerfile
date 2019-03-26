@@ -9,5 +9,7 @@ VOLUME [ "/watch" ]
 ADD . /app
 WORKDIR /app
 
+ENV ENVIRONMENT=production
+
 RUN npm install --only=production
 CMD [ "npm", "start" ]
