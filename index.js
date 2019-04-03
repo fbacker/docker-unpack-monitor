@@ -153,9 +153,11 @@ setInterval(() => {
     isRunning = true;
     que.shift();
     const fileObj = path.parse(item.file);
-    console.log(`Que Step 1/3: Trying to unpack ${shortname(item.file)}.`);
-
     let command = `unrar x -o- "${item.file}" "${fileObj.dir}"`;
+    console.log(`Que Step 1/3: Trying to unpack.`, {
+      file: shortname(item.file),
+      command
+    });
     shell.exec(command, { silent: true }, function(code, stdout, stderr) {
       const NoFilesToExtract = stdout.match(/no files to extract/gim); // already unpacked
       const CompletedExtract = stdout.match(/all ok/gim); // successfull unpacked
