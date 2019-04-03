@@ -153,7 +153,7 @@ setInterval(() => {
     isRunning = true;
     que.shift();
     const fileObj = path.parse(item.file);
-    console.log(`Que: Trying to unpack ${shortname(item.file)}`);
+    console.log(`Que Step 1/3: Trying to unpack ${shortname(item.file)}.`);
 
     let command = `unrar x -o- "${item.file}" "${fileObj.dir}"`;
     shell.exec(command, { silent: true }, function(code, stdout, stderr) {
@@ -162,7 +162,7 @@ setInterval(() => {
 
       const outList = stdout.split("\n");
       // console.log(stdout.split("\n"));
-      console.log("Que: unpack feedback", {
+      console.log("Que Step 2/3: unpack feedback.", {
         NoFilesToExtract,
         CompletedExtract,
         LastOutput: outList[outList.length - 2]
@@ -171,22 +171,18 @@ setInterval(() => {
       let didUnpack = false;
       if (NoFilesToExtract && NoFilesToExtract.length > 0) {
         didUnpack = true;
-        console.log(`Que: Was already unpacked '${shortname(item.file)}'`);
+        console.log(`Que Step 3/3: Was already unpacked.`);
       } else if (CompletedExtract && CompletedExtract.length > 0) {
         didUnpack = true;
-        console.log(
-          `Que: Unpacked and ready to be used '${shortname(item.file)}'`
-        );
+        console.log(`Que Step 3/3: Unpacked and ready to be used.`);
       } else {
         if (item.retry > 3) {
-          console.error(
-            `We couldn't unpack, lets stop trying '${shortname(item.file)}'`
-          );
+          console.error(`Que Step 3/3: We couldn't unpack, lets stop trying.`);
         } else {
           console.error(
-            `We couldn't unpack, add to list with delay of 10min, retry count ${
+            `Que Step 3/3: We couldn't unpack, add to list with delay of 10min, retry count ${
               item.retry
-            } on file '${shortname(item.file)}'`
+            } of 3`
           );
           que.push({
             file: item.file,
