@@ -13,15 +13,17 @@ const config = {
   ext: [".rar"],
   delayUnpackSeconds: 5
 };
+const skipDotCheck = process.env.ALWAYS_UNPACK || false;
 let que = [];
 let isRunning = false;
 
 const shortname = file => {
-  const fileObj = path.parse(file);
-  const fileOutputDir =
-    "../.." + fileObj.dir.substr(fileObj.dir.lastIndexOf("/"));
-  const out = path.join(fileOutputDir, fileObj.base);
-  return out;
+  // const fileObj = path.parse(file);
+  // const fileOutputDir =
+  //   "../.." + fileObj.dir.substr(fileObj.dir.lastIndexOf("/"));
+  // const out = path.join(fileOutputDir, fileObj.base);
+  // return out;
+  return file;
 };
 /**
  *
@@ -74,17 +76,21 @@ const watchFolderCheckValid = (file, event) =>
       // check the file
       const fileObj = path.parse(file);
       if (config.ext.includes(fileObj.ext.toLowerCase())) {
-        const unpackedFileCheck = path.join(fileObj.dir, `.${fileObj.name}`);
-        if (fs.existsSync(unpackedFileCheck)) {
-          //file exists
-          console.log(
-            `Already unpacked file '${shortname(file)}' remove '.${
-              fileObj.name
-            }' to unpack again.`
-          );
-          return reject();
-        } else {
+        if (skipDotCheck) {
           return resolve(file);
+        } else {
+          const unpackedFileCheck = path.join(fileObj.dir, `.${fileObj.name}`);
+          if (fs.existsSync(unpackedFileCheck)) {
+            //file exists
+            console.log(
+              `Already unpacked file '${shortname(file)}' remove '.${
+                fileObj.name
+              }' to unpack again.`
+            );
+            return reject();
+          } else {
+            return resolve(file);
+          }
         }
       }
     }
@@ -151,11 +157,16 @@ setInterval(() => {
 
     let command = `unrar x -o- "${item.file}" "${fileObj.dir}"`;
     shell.exec(command, { silent: true }, function(code, stdout, stderr) {
-      // console.log(stdout);
       const NoFilesToExtract = stdout.match(/no files to extract/gim); // already unpacked
       const CompletedExtract = stdout.match(/all ok/gim); // successfull unpacked
 
-      // console.log("did match", { NoFilesToExtract, CompletedExtract });
+      const outList = stdout.split("\n");
+      // console.log(stdout.split("\n"));
+      console.log("Que: unpack feedback", {
+        NoFilesToExtract,
+        CompletedExtract,
+        LastOutput: outList[outList.length - 2]
+      });
 
       let didUnpack = false;
       if (NoFilesToExtract && NoFilesToExtract.length > 0) {

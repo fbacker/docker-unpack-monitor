@@ -4,7 +4,7 @@ A docker container that listen recusivly on a watch folder. Scans for \*.rar fil
 
 If a failed unpack occurs, e.g. not all rxx files are in place. It will retry to unpack later, but a maximum of 3 retries.
 
-Note: If issue with permissions, make sure to set PGID/UID.
+Note: If issue with permissions, make sure to set PGID/UID to unpack with correct user access (not root).
 
 ## How it works
 
@@ -43,4 +43,11 @@ unpack:
   environment:
     - PGID=1000
     - PUID=1000
+```
+
+## Environment variables
+
+```js
+// Ignore for checking the .{filename}, always unpack
+ALWAYS_UNPACK = true | false;
 ```
